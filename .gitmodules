@@ -1,4 +1,4 @@
 [submodule "gh-pages"]
 	path = gh-pages
-	url = https://github.com/nocd5/md2html
+	url = https://github.com/godoes/md2html
 	branch = gh-pages

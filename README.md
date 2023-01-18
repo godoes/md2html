@@ -1,7 +1,7 @@
 # md2html
 
-[![Build status](https://github.com/nocd5/md2html/workflows/Build/badge.svg?branch=master)](https://github.com/nocd5/md2html/actions?query=workflow%3ABuild+branch%3Amaster)
-![Test status](https://github.com/nocd5/md2html/workflows/Test/badge.svg?branch=master)
+[![Build status](https://github.com/godoes/md2html/workflows/Build/badge.svg?branch=master)](https://github.com/godoes/md2html/actions?query=workflow%3ABuild+branch%3Amaster)
+![Test status](https://github.com/godoes/md2html/workflows/Test/badge.svg?branch=master)
 
 Markdown to single HTML converter.
 
@@ -25,7 +25,7 @@ $ md2html example/*.md -e -t -m -s -f example/img/nocd5.png -c example/css/custo
 
 ## Installation
 
-`go install github.com/nocd5/md2html/v2@latest`
+`go install github.com/godoes/md2html/v2@latest`
 
 ## Usage
 
@@ -72,11 +72,11 @@ $ md2html -e -t example/*.md -o example/concat.html
 ## Custom JS & CSS
 
 ```bash
-$ go get -d github.com/nocd5/md2html
-$ cd ${GOPATH}/src/github.com/nocd5/md2html
+$ go get -d github.com/godoes/md2html
+$ cd ${GOPATH}/src/github.com/godoes/md2html
 
 ###########################################################
-# customize "{$GOPATH}/src/github.com/nocd5/md2html/src/" #
+# customize "{$GOPATH}/src/github.com/godoes/md2html/src/" #
 ###########################################################
 
 $ npm install && gulp

@@ -1,4 +1,4 @@
-module github.com/nocd5/md2html/v2
+module github.com/godoes/md2html/v2
 
 go 1.15
 

@@ -20,14 +20,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nocd5/md2html.git"
+    "url": "git+https://github.com/godoes/md2html.git"
   },
   "author": "nocd5",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/nocd5/md2html/issues"
+    "url": "https://github.com/godoes/md2html/issues"
   },
-  "homepage": "https://github.com/nocd5/md2html#readme",
+  "homepage": "https://github.com/godoes/md2html#readme",
   "dependencies": {
     "mkdirp": "^1.0.4"
   }
