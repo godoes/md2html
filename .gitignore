@@ -16,6 +16,7 @@
 .idea
 *.iml
 *.ipr
+go.sum
 
 # CMake
 cmake-build-*/

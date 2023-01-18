@@ -9,7 +9,7 @@ let css = '';
 const files = fs.readdirSync(path.join(__dirname, 'assets'))
                 .map(f => path.join(__dirname, 'assets', f));
 
-files.filter(f => path.extname(f) == '.js').forEach(f => {
+files.filter(f => path.extname(f) === '.js').forEach(f => {
   if (path.basename(f).match(/mathjax/i)) {
     if (path.basename(f).match(/config/i)) {
       mathjax_cfg += '<script type="text/x-mathjax-config">\n';
@@ -29,8 +29,8 @@ files.filter(f => path.extname(f) == '.js').forEach(f => {
   }
 });
 
-files.filter(f => path.extname(f) == '.css').forEach(f => {
-  css += '<style type="text/css">\n';
+files.filter(f => path.extname(f) === '.css').forEach(f => {
+  css += '<style>\n';
   css += fs.readFileSync(f, { encoding: 'utf8' });
   css += '\n</style>\n';
 });
@@ -48,16 +48,16 @@ let css_bytes = str2bytes(css);
 
 const content = `package main
 
-var js_bytes = [...]byte{
+var jsBytes = [...]byte{
 	${js_bytes.replace(/\n/g, '\n\t')},
 }
-var mathjax_cfg_bytes = [...]byte{
+var mathjaxCfgBytes = [...]byte{
 	${mathjax_cfg_bytes.replace(/\n/g, '\n\t')},
 }
-var mathjax_bytes = [...]byte{
+var mathjaxBytes = [...]byte{
 	${mathjax_bytes.replace(/\n/g, '\n\t')},
 }
-var css_bytes = [...]byte{
+var cssBytes = [...]byte{
 	${css_bytes.replace(/\n/g, '\n\t')},
 }
 `;

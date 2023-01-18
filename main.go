@@ -4,16 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
-	chromahtml "github.com/alecthomas/chroma/formatters/html"
-	"github.com/jessevdk/go-flags"
-	"github.com/nocd5/goldmark-highlighting"
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/extension"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/renderer/html"
-	"io/ioutil"
+	"io"
 	"mime"
 	"os"
 	"path/filepath"
@@ -21,6 +12,16 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/PuerkitoBio/goquery"
+	chromaHtml "github.com/alecthomas/chroma/formatters/html"
+	"github.com/jessevdk/go-flags"
+	"github.com/nocd5/goldmark-highlighting"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer"
+	"github.com/yuin/goldmark/renderer/html"
 )
 
 type Options struct {
@@ -52,9 +53,9 @@ const (
 </body>
 </html>`
 
-	toc_tag = `<div id="markdown-toc"></div>
+	tocTag = `<div id="markdown-toc"></div>
 `
-	favicon_tag = `<link rel='shortcut icon' href='data:image/x-icon;base64,%s'/>
+	faviconTag = `<link rel='shortcut icon' href='data:image/x-icon;base64,%s'/>
 `
 )
 
@@ -68,14 +69,14 @@ var (
 		highlighting.NewHighlighting(
 			highlighting.WithStyle("github"),
 			highlighting.WithFormatOptions(
-				chromahtml.WithClasses(true),
+				chromaHtml.WithClasses(true),
 			),
 		),
 	}
-	parseroptions = []parser.Option{
+	parserOptions = []parser.Option{
 		parser.WithAutoHeadingID(),
 	}
-	rendereroptions = []renderer.Option{
+	rendererOptions = []renderer.Option{
 		html.WithXHTML(),
 		html.WithUnsafe(),
 	}
@@ -93,7 +94,7 @@ func main() {
 	}
 
 	if len(inputs) <= 0 {
-		fmt.Fprintln(os.Stderr, "Please specify input Markdown")
+		_, _ = fmt.Fprintln(os.Stderr, "Please specify input Markdown")
 		os.Exit(1)
 	}
 
@@ -101,56 +102,58 @@ func main() {
 	for _, input := range inputs {
 		f, err := filepath.Glob(input)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			_, _ = fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 		files = append(files, f...)
 	}
 	if len(files) <= 0 {
-		fmt.Fprintln(os.Stderr, "File is not found")
+		_, _ = fmt.Fprintln(os.Stderr, "File is not found")
 		os.Exit(1)
 	}
 
-	parser := goldmark.New(
+	mdParser := goldmark.New(
 		goldmark.WithExtensions(extensions...),
-		goldmark.WithParserOptions(parseroptions...),
-		goldmark.WithRendererOptions(rendereroptions...),
+		goldmark.WithParserOptions(parserOptions...),
+		goldmark.WithRendererOptions(rendererOptions...),
 	)
 
 	if len(opts.OutputFile) > 0 {
 		ext := regexp.QuoteMeta(filepath.Ext(opts.OutputFile))
 		re := regexp.MustCompile(ext + "$")
 		title := filepath.Base(re.ReplaceAllString(opts.OutputFile, ""))
-		html, err := renderHtmlConcat(files, opts.EmbedImage, parser)
+		htmlStr, err := renderHTMLConcat(files, opts.EmbedImage, mdParser)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			_, _ = fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		if err := writeHtml(html, title, opts.OutputFile, opts.TOC, opts.MathJax, opts.Favicon, opts.TableSpan, opts.CustomCSS); err != nil {
-			fmt.Fprintln(os.Stderr, err)
+		if err := writeHTML(htmlStr, title, opts.OutputFile, opts.TOC, opts.MathJax, opts.Favicon, opts.TableSpan, opts.CustomCSS); err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, err)
 		}
 	} else {
 		for _, file := range files {
-			html, err := renderHtml(file, opts.EmbedImage, parser)
+			htmlStr, err := renderHTML(file, opts.EmbedImage, mdParser)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
+				_, _ = fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
-			if err := writeHtml(html, file, file+".html", opts.TOC, opts.MathJax, opts.Favicon, opts.TableSpan, opts.CustomCSS); err != nil {
-				fmt.Fprintln(os.Stderr, err)
+			if err := writeHTML(htmlStr, file, file+".html", opts.TOC, opts.MathJax, opts.Favicon, opts.TableSpan, opts.CustomCSS); err != nil {
+				_, _ = fmt.Fprintln(os.Stderr, err)
 			}
 		}
 	}
 }
 
-func renderHtml(input string, embed bool, parser goldmark.Markdown) (string, error) {
+func renderHTML(input string, embed bool, parser goldmark.Markdown) (string, error) {
 	fi, err := os.Open(input)
 	if err != nil {
 		return "", err
 	}
-	defer fi.Close()
+	defer func(fi *os.File) {
+		_ = fi.Close()
+	}(fi)
 
-	md, err := ioutil.ReadAll(fi)
+	md, err := io.ReadAll(fi)
 	if err != nil {
 		return "", err
 	}
@@ -159,82 +162,86 @@ func renderHtml(input string, embed bool, parser goldmark.Markdown) (string, err
 		return "", err
 	}
 
-	html, err := parseImageOpt(buf.String())
+	htmlStr, err := parseImageOpt(buf.String())
 	if err != nil {
 		return "", err
 	}
 
 	if embed {
-		html, err = embedImage(html, filepath.Dir(input))
+		htmlStr, err = embedImage(htmlStr, filepath.Dir(input))
 		if err != nil {
 			return "", err
 		}
 	}
 
-	return html, nil
+	return htmlStr, nil
 }
 
-func renderHtmlConcat(inputs []string, embed bool, parser goldmark.Markdown) (string, error) {
-	html := ""
+func renderHTMLConcat(inputs []string, embed bool, parser goldmark.Markdown) (string, error) {
+	htmlStr := ""
 	for _, input := range inputs {
 		fi, err := os.Open(input)
 		if err != nil {
 			return "", err
 		}
-		defer fi.Close()
 
-		md, err := ioutil.ReadAll(fi)
+		md, err := io.ReadAll(fi)
 		if err != nil {
+			_ = fi.Close()
 			return "", err
 		}
 
 		var buf bytes.Buffer
 		if err := parser.Convert(md, &buf); err != nil {
+			_ = fi.Close()
 			return "", err
 		}
 
 		h, err := parseImageOpt(buf.String())
 		if err != nil {
+			_ = fi.Close()
 			return "", err
 		}
 
 		if embed {
 			h, err = embedImage(h, filepath.Dir(input))
 			if err != nil {
+				_ = fi.Close()
 				return "", err
 			}
 		}
 
-		html += h
+		htmlStr += h
+		_ = fi.Close()
 	}
 
-	return html, nil
+	return htmlStr, nil
 }
 
-func writeHtml(html, title, output string, toc, mathjax bool, favicon string, tablespan bool, customcss string) error {
+func writeHTML(html, title, output string, toc, mathjax bool, favicon string, tableSpan bool, customCSS string) error {
 	var err error
 
-	js := string(js_bytes[:len(js_bytes)])
+	js := string(jsBytes[:])
 	if mathjax {
-		js += string(mathjax_cfg_bytes[:len(mathjax_cfg_bytes)])
-		js += string(mathjax_bytes[:len(mathjax_bytes)])
+		js += string(mathjaxCfgBytes[:])
+		js += string(mathjaxBytes[:])
 	}
 
-	css := string(css_bytes[:len(css_bytes)])
+	css := string(cssBytes[:])
 
 	tt := ""
 	if toc {
-		tt = toc_tag
+		tt = tocTag
 	}
 
-	favi := ""
+	faviconEle := ""
 	if len(favicon) > 0 {
 		cwd, _ := os.Getwd()
 		b, err := decodeBase64(favicon, cwd)
 		if err != nil {
 			return err
 		}
-		favi = fmt.Sprintf(favicon_tag, b)
+		faviconEle = fmt.Sprintf(faviconTag, b)
 	}
 
 	if mathjax {
@@ -249,21 +256,23 @@ func writeHtml(html, title, output string, toc, mathjax bool, favicon string, ta
 		return err
 	}
 
-	if tablespan {
+	if tableSpan {
 		html, err = replaceTableSpan(html)
 		if err != nil {
 			return err
 		}
 	}
 
-	if len(customcss) > 0 {
-		fi, err := os.Open(customcss)
+	if len(customCSS) > 0 {
+		fi, err := os.Open(customCSS)
 		if err != nil {
 			return err
 		}
-		defer fi.Close()
+		defer func(fi *os.File) {
+			_ = fi.Close()
+		}(fi)
 
-		c, err := ioutil.ReadAll(fi)
+		c, err := io.ReadAll(fi)
 		if err != nil {
 			return err
 		}
@@ -274,42 +283,44 @@ func writeHtml(html, title, output string, toc, mathjax bool, favicon string, ta
 	if err != nil {
 		return err
 	}
-	defer fo.Close()
+	defer func(fo *os.File) {
+		_ = fo.Close()
+	}(fo)
 
-	fmt.Fprintf(fo, template, favi, title, js+"\n"+css, tt, html)
+	_, _ = fmt.Fprintf(fo, template, faviconEle, title, js+"\n"+css, tt, html)
 	return nil
 }
 
 func embedImage(src, parent string) (string, error) {
 	dest := src
 
-	re_find := regexp.MustCompile(`(<img[\S\s]+?src=")([\S\s]+?)("[\S\s]*?/?>)`)
-	re_url := regexp.MustCompile(`(?i)^https?://.*`)
+	reFind := regexp.MustCompile(`(<img[\S\s]+?src=")([\S\s]+?)("[\S\s]*?/?>)`)
+	reUrl := regexp.MustCompile(`(?i)^https?://.*`)
 
-	img_tags := re_find.FindAllString(src, -1)
-	for _, t := range img_tags {
-		img_src := re_find.ReplaceAllString(t, "$2")
+	imgTags := reFind.FindAllString(src, -1)
+	for _, t := range imgTags {
+		imgSrc := reFind.ReplaceAllString(t, "$2")
 
-		if re_url.MatchString(img_src) {
+		if reUrl.MatchString(imgSrc) {
 			continue
 		}
-		b64img, err := decodeBase64(img_src, parent)
+		b64img, err := decodeBase64(imgSrc, parent)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			_, _ = fmt.Fprintln(os.Stderr, err)
 			continue
 		}
 
-		re_replace, err := regexp.Compile(`(<img[\S\s]+?src=")` + regexp.QuoteMeta(img_src) + `("[\S\s]*?/?>)`)
+		reReplace, err := regexp.Compile(`(<img[\S\s]+?src=")` + regexp.QuoteMeta(imgSrc) + `("[\S\s]*?/?>)`)
 		if err != nil {
 			return src, err
 		}
 
-		ext := filepath.Ext(img_src)
-		mime_type := mime.TypeByExtension(ext)
-		if len(mime_type) <= 0 {
-			mime_type = "image"
+		ext := filepath.Ext(imgSrc)
+		mimeType := mime.TypeByExtension(ext)
+		if len(mimeType) <= 0 {
+			mimeType = "image"
 		}
-		dest = re_replace.ReplaceAllString(dest, "${1}data:"+mime_type+";base64,"+b64img+"${2}")
+		dest = reReplace.ReplaceAllString(dest, "${1}data:"+mimeType+";base64,"+b64img+"${2}")
 	}
 	return dest, nil
 }
@@ -324,14 +335,16 @@ func decodeBase64(src, parent string) (string, error) {
 		pathErr := err.(*os.PathError)
 		errno := pathErr.Err.(syscall.Errno)
 		if errno != 0x7B { // suppress ERROR_INVALID_NAME
-			fmt.Fprintln(os.Stderr, err)
+			_, _ = fmt.Fprintln(os.Stderr, err)
 			return "", nil
 		}
 		return "", err
 	}
-	defer f.Close()
+	defer func(f *os.File) {
+		_ = f.Close()
+	}(f)
 
-	d, err := ioutil.ReadAll(f)
+	d, err := io.ReadAll(f)
 	if err != nil {
 		return "", err
 	}
@@ -401,12 +414,12 @@ func replaceTableSpan(src string) (string, error) {
 		tbl.Find("tbody").Each(func(j int, tbody *goquery.Selection) {
 			trs := tbody.Find("tr")
 			// colspan
-			colmax := 0
+			colMax := 0
 			trs.Each(func(k int, tr *goquery.Selection) {
 				tds := tr.Find("td")
-				colmns := tds.Length()
-				if colmns > colmax {
-					colmax = colmns
+				colMns := tds.Length()
+				if colMns > colMax {
+					colMax = colMns
 				}
 				col := 0
 				tds.Each(func(l int, td *goquery.Selection) {
@@ -419,13 +432,13 @@ func replaceTableSpan(src string) (string, error) {
 							col += cnt
 						}
 					})
-					if col > colmns {
+					if col > colMns {
 						td.SetAttr("hidden", "")
 					}
 				})
 			})
 			// rowspan
-			for m := 0; m < colmax; m++ {
+			for m := 0; m < colMax; m++ {
 				var root *goquery.Selection
 				cnt := 0
 				trs.Each(func(k int, tr *goquery.Selection) {
