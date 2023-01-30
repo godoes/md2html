@@ -1,13 +1,13 @@
-var gulp = require('gulp');
-var rename = require('gulp-rename');
-var uglify = require('gulp-uglify');
-var sass = require('gulp-sass');
-var cleanCss = require('gulp-clean-css');
-var jsonTransform = require('gulp-json-transform');
-var jsonSass = require('gulp-json-sass');
-var del = require('del');
+let gulp = require('gulp');
+let rename = require('gulp-rename');
+let uglify = require('gulp-uglify');
+let sass = require('gulp-sass')(require('sass'));
+let cleanCss = require('gulp-clean-css');
+let jsonTransform = require('gulp-json-transform');
+let jsonSass = require('gulp-json-sass');
+let del = require('del');
 
-var paths = {
+let paths = {
   'src': './src/',
   'js': './assets/',
   'css': './assets/',
@@ -28,7 +28,7 @@ gulp.task('js', function() {
 });
 
 gulp.task('json2js', function() {
-  jsonObjectName = "";
+  let jsonObjectName = "";
   return gulp.src(paths.src + '**/*.json')
     .pipe(rename(function(path) {
         jsonObjectName = path.basename;
@@ -44,7 +44,7 @@ gulp.task('json2sass', function() {
   return gulp.src(paths.src + '**/*.json')
     .pipe(jsonSass({
         delim: '-',
-        sass: false,
+        sass: true,
         ignoreJsonErrors: true,
         escapeIllegalCharacters: true,
         prefixFirstNumericCharacter: true,

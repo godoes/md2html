@@ -143,3 +143,6 @@ replay_pid*
 
 # [Air](https://github.com/cosmtrek/air) TEMPORARY DIRECTORY
 tmp
+/node_modules/
+/src/config.sass
+/package-lock.json

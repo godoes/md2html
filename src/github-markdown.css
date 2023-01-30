@@ -59,10 +59,9 @@
   -ms-text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
   line-height: 1.5;
-  color: #24292e;
+  color: #2c3e50;
   font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif,Apple Color Emoji,Segoe UI Emoji;
   font-size: 16px;
-  line-height: 1.5;
   word-wrap: break-word;
 }
 
@@ -84,7 +83,6 @@
 }
 
 .markdown-body strong {
-  font-weight: inherit;
   font-weight: bolder;
 }
 
@@ -135,7 +133,7 @@
 }
 
 .markdown-body a {
-  color: #0366d6;
+  color: #42b983;
   text-decoration: none;
 }
 
@@ -178,19 +176,6 @@
 
 .markdown-body details summary {
   cursor: pointer;
-}
-
-.markdown-body kbd {
-  display: inline-block;
-  padding: 3px 5px;
-  font: 11px SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;
-  line-height: 10px;
-  color: #444d56;
-  vertical-align: middle;
-  background-color: #fafbfc;
-  border: 1px solid #d1d5da;
-  border-radius: 3px;
-  box-shadow: inset 0 -1px 0 #d1d5da;
 }
 
 .markdown-body h1,
@@ -719,7 +704,7 @@
 }
 
 .markdown-body li {
-  word-wrap: break-all;
+  word-break: break-all;
 }
 
 .markdown-body li>p {
@@ -829,7 +814,6 @@
 
 .markdown-body pre code {
   display: inline;
-  max-width: auto;
   padding: 0;
   margin: 0;
   overflow: visible;

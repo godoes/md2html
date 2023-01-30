@@ -6,11 +6,13 @@
 $ md2html example/custom-css.md -c example/css/custom-css.css
 ```
 
+### wheel
+
 #### Example for `wheel` class
 
 ```markdown
-<img class="vinyl ep" src="img/nocd5.png">
-<img class="vinyl lp" src="img/nocd5.png">
+<img class="vinyl ep" src="img/go.png">
+<img class="vinyl lp" src="img/go.png">
 ```
 
 #### Custom CSS for `wheel`
@@ -36,7 +38,7 @@ img.vinyl.lp {
 }
 ```
 
-<img class="vinyl ep" src="img/nocd5.png">
-<img class="vinyl lp" src="img/nocd5.png">
+<img class="vinyl ep" src="img/go.png">
+<img class="vinyl lp" src="img/go.png">
 <!-- dummy for avoid .markdown-body > :last-child { margin-bottom: 0 !important; } -->
 <p/>

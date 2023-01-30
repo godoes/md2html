@@ -1,0 +1,1 @@
+config={"color":{"bg":"#009483","fg":"#ffffff","active":"#F7B64A","hover":"#1B56D0"},"toc":{"width":"30%","minWidth":"200px","maxWidth":"400px","shiftWidth":"1em","lineHeight":2},"button":{"size":"1em","color":{"bg":"#f66","active":"#5c4"},"duration":500}}

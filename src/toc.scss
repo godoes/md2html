@@ -1,19 +1,21 @@
 @import 'config';
 
 #markdown-toc {
+    margin-left: -20px;
+    margin-right: 20px;
     overflow-y: auto;
     color: $color-fg;
     background: $color-bg;
     width: $toc-width;
-    min-width: $toc-minwidth;
+    min-width: $toc-minWidth;
+    max-width: $toc-maxWidth;
     height: 100vh;
     position: sticky;
     top: 0;
     box-shadow: 0 0 5px 0 #000;
-    transition: width #{$button-duration/1000 + 's'} ease-in-out, min-width #{$button-duration/1000 + 's'} ease-in-out;
+    transition: width #{calc($button-duration / 1000) + 's'} ease-in-out, min-width #{calc($button-duration / 1000) + 's'} ease-in-out;
     ul {
-        padding: 0;
-        padding-top: $toc-shiftwidth;
+        padding: calc($button-size * 2) 0;
         list-style: none;
     }
     a {
@@ -21,7 +23,7 @@
         text-decoration: none;
         display: block;
         width: 100%;
-        line-height: $toc-lineheight;
+        line-height: $toc-lineHeight;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -39,9 +41,9 @@
     }
     @for $i from 1 through 4 {
         .toc-h#{$i} {
-            font-size: #{1em - ($i - 1)/16};
+            font-size: #{1.3em - calc(($i - 1) / 5)};
             :before {
-                padding-left: calc(#{$toc-shiftwidth * $i} + #{$button-size});
+                padding-left: calc(#{$toc-shiftWidth * ($i - 1)} + #{$button-size});
             }
         }
     }
@@ -49,14 +51,14 @@
 
 .toc-button {
     position: fixed;
-    top: $button-size/2;
-    margin-left: $button-size/2;
+    top: calc($button-size / 2);
+    margin-left: calc($button-size / 2);
     width: $button-size;
     height: $button-size;
     border-radius: 50%;
     background: $button-color-bg;
     cursor: pointer;
-    transition: transform #{$button-duration/1000 + 's'} linear;
+    transition: transform #{calc($button-duration / 1000) + 's'} linear;
     &:before, &:after {
         transform: rotate(-45deg);
         position: absolute;

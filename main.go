@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"mime"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -18,15 +19,18 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/nocd5/goldmark-highlighting"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/util"
 )
 
 type Options struct {
 	InputFile  string `long:"input" short:"i" description:"input Markdown"`
 	OutputFile string `long:"output" short:"o" description:"output HTML"`
+	HtmlTitle  string `long:"html-title" short:"h" description:"custom html title, default is output file name"`
 	EmbedImage bool   `long:"embed" short:"e" description:"embed image by base64 encoding"`
 	TOC        bool   `long:"toc" short:"t" description:"generate TOC"`
 	MathJax    bool   `long:"mathjax" short:"m" description:"use MathJax"`
@@ -55,9 +59,29 @@ const (
 
 	tocTag = `<div id="markdown-toc"></div>
 `
-	faviconTag = `<link rel='shortcut icon' href='data:image/x-icon;base64,%s'/>
+	faviconTag = `<link rel='shortcut icon' href='%s'/>
 `
 )
+
+type genHtmlHeaderIDs struct {
+	values map[string]bool
+}
+
+func (s *genHtmlHeaderIDs) Generate(value []byte, _ ast.NodeKind) []byte {
+	id := strings.ReplaceAll(strings.ToLower(string(value)), " ", "-")
+	id = url.PathEscape(id)
+	if s.values[id] {
+		id += "_"
+	}
+	idBytes := []byte(id)
+	s.Put(idBytes)
+
+	return idBytes
+}
+
+func (s *genHtmlHeaderIDs) Put(value []byte) {
+	s.values[util.BytesToReadOnlyString(value)] = true
+}
 
 // goldmark convert options
 var (
@@ -73,6 +97,10 @@ var (
 			),
 		),
 	}
+	ctx = parser.NewContext(parser.WithIDs(&genHtmlHeaderIDs{
+		values: map[string]bool{},
+	}))
+
 	parserOptions = []parser.Option{
 		parser.WithAutoHeadingID(),
 	}
@@ -121,13 +149,16 @@ func main() {
 	if len(opts.OutputFile) > 0 {
 		ext := regexp.QuoteMeta(filepath.Ext(opts.OutputFile))
 		re := regexp.MustCompile(ext + "$")
-		title := filepath.Base(re.ReplaceAllString(opts.OutputFile, ""))
+		title := opts.HtmlTitle
+		if strings.TrimSpace(title) == "" {
+			title = filepath.Base(re.ReplaceAllString(opts.OutputFile, ""))
+		}
 		htmlStr, err := renderHTMLConcat(files, opts.EmbedImage, mdParser)
 		if err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		if err := writeHTML(htmlStr, title, opts.OutputFile, opts.TOC, opts.MathJax, opts.Favicon, opts.TableSpan, opts.CustomCSS); err != nil {
+		if err := writeHTML(htmlStr, title, opts); err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, err)
 		}
 	} else {
@@ -137,14 +168,20 @@ func main() {
 				_, _ = fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
-			if err := writeHTML(htmlStr, file, file+".html", opts.TOC, opts.MathJax, opts.Favicon, opts.TableSpan, opts.CustomCSS); err != nil {
+
+			title := opts.HtmlTitle
+			if strings.TrimSpace(title) == "" {
+				title = file
+			}
+			opts.OutputFile = file + ".html"
+			if err := writeHTML(htmlStr, title, opts); err != nil {
 				_, _ = fmt.Fprintln(os.Stderr, err)
 			}
 		}
 	}
 }
 
-func renderHTML(input string, embed bool, parser goldmark.Markdown) (string, error) {
+func renderHTML(input string, embed bool, markdown goldmark.Markdown) (string, error) {
 	fi, err := os.Open(input)
 	if err != nil {
 		return "", err
@@ -158,7 +195,7 @@ func renderHTML(input string, embed bool, parser goldmark.Markdown) (string, err
 		return "", err
 	}
 	var buf bytes.Buffer
-	if err := parser.Convert(md, &buf); err != nil {
+	if err := markdown.Convert(md, &buf, parser.WithContext(ctx)); err != nil {
 		return "", err
 	}
 
@@ -177,7 +214,7 @@ func renderHTML(input string, embed bool, parser goldmark.Markdown) (string, err
 	return htmlStr, nil
 }
 
-func renderHTMLConcat(inputs []string, embed bool, parser goldmark.Markdown) (string, error) {
+func renderHTMLConcat(inputs []string, embed bool, markdown goldmark.Markdown) (string, error) {
 	htmlStr := ""
 	for _, input := range inputs {
 		fi, err := os.Open(input)
@@ -192,7 +229,7 @@ func renderHTMLConcat(inputs []string, embed bool, parser goldmark.Markdown) (st
 		}
 
 		var buf bytes.Buffer
-		if err := parser.Convert(md, &buf); err != nil {
+		if err := markdown.Convert(md, &buf, parser.WithContext(ctx)); err != nil {
 			_ = fi.Close()
 			return "", err
 		}
@@ -218,33 +255,37 @@ func renderHTMLConcat(inputs []string, embed bool, parser goldmark.Markdown) (st
 	return htmlStr, nil
 }
 
-func writeHTML(html, title, output string, toc, mathjax bool, favicon string, tableSpan bool, customCSS string) error {
+func writeHTML(html, title string, opts Options) error {
 	var err error
 
-	js := string(jsBytes[:])
-	if mathjax {
-		js += string(mathjaxCfgBytes[:])
-		js += string(mathjaxBytes[:])
+	js := jsStr
+	if opts.MathJax {
+		js += mathjaxCfgStr
+		js += mathjaxStr
 	}
 
-	css := string(cssBytes[:])
+	css := cssStr
 
 	tt := ""
-	if toc {
+	if opts.TOC {
 		tt = tocTag
 	}
 
 	faviconEle := ""
-	if len(favicon) > 0 {
-		cwd, _ := os.Getwd()
-		b, err := decodeBase64(favicon, cwd)
-		if err != nil {
-			return err
+	if len(opts.Favicon) > 0 {
+		faviconUrl := opts.Favicon
+		if opts.EmbedImage {
+			cwd, _ := os.Getwd()
+			faviconUrl, err = decodeBase64(opts.Favicon, cwd)
+			if err != nil {
+				return err
+			}
+			faviconUrl = "data:image/x-icon;base64," + faviconUrl
 		}
-		faviconEle = fmt.Sprintf(faviconTag, b)
+		faviconEle = fmt.Sprintf(faviconTag, faviconUrl)
 	}
 
-	if mathjax {
+	if opts.MathJax {
 		html, err = replaceMathJaxCodeBlock(html)
 		if err != nil {
 			return err
@@ -256,15 +297,15 @@ func writeHTML(html, title, output string, toc, mathjax bool, favicon string, ta
 		return err
 	}
 
-	if tableSpan {
+	if opts.TableSpan {
 		html, err = replaceTableSpan(html)
 		if err != nil {
 			return err
 		}
 	}
 
-	if len(customCSS) > 0 {
-		fi, err := os.Open(customCSS)
+	if len(opts.CustomCSS) > 0 {
+		fi, err := os.Open(opts.CustomCSS)
 		if err != nil {
 			return err
 		}
@@ -279,7 +320,7 @@ func writeHTML(html, title, output string, toc, mathjax bool, favicon string, ta
 		css += "<style type=\"text/css\">\n" + string(c) + "</style>\n"
 	}
 
-	fo, err := os.Create(output)
+	fo, err := os.Create(opts.OutputFile)
 	if err != nil {
 		return err
 	}
