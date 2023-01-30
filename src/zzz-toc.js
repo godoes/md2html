@@ -48,12 +48,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     document.body.appendChild(button);
 
-    // Smooth Scroll
-    SmoothScroll('a[href*="#"]', {
-        speed: 500,
-        speedAsDuration: true
-    });
-
     // TOC Highlight
     function highlight() {
         let active = anchor[0];
